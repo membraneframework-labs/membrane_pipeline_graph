@@ -26,11 +26,14 @@
         layout: {
           name: 'fcose',
           animate: false,
+          randomize: false,
+          quality: 'proof'
         },
         style: [
           {
             selector: 'node',
             style: {
+              'overlay-opacity': 0,
               'background-color': '#636fb1',
               'border-color': '#636fb1',
               label: 'data(label)',
@@ -99,10 +102,12 @@
           animate: false,
           animationDuration: 300,
           randomize: false,
-          fit: false
+          fit: false,
+          minEdgeLength: 50
         },
-        animate: false,
-        fisheye: false,
+        animate: true,
+        animationDuration: 500,
+        fisheye: true,
         undoable: false,
         expandCueImage: "icon-plus.png",
         collapseCueImage: "icon-minus.png"
@@ -130,15 +135,15 @@
 
 
       cy.on("expandcollapse.afterexpand", function(event) {
-        setTimeout(() => {
-          node = event.target;
-          cy.animate({fit: {padding: 50}}, {duration: 300});
-        }, 5);
+        // setTimeout(() => {
+        //   node = event.target;
+        //   cy.animate({fit: {padding: 50}}, {duration: 300});
+        // }, 5);
 
         setTimeout(() => {
           node = event.target;
-          cy.animate({fit: {eles: node, padding: 50}}, {duration: 300});
-        }, 310);
+          cy.animate({fit: {eles: node, padding: 50}}, {duration: 500});
+        }, 5);
 
         event.stopPropagation();
       });
@@ -148,17 +153,30 @@
       api.collapseRecursively(cy.nodes().filter(node => node.data().bin));
 
       setTimeout(() => {
-        cy.animate({fit: {padding: 50}}, {duration: 300});
+        cy.animate({fit: {padding: 50}}, {duration: 100});
       }, 5);
 
 
-    //   cy.on("expandcollapse.aftercollapse", function(event) {
-    //     setTimeout(() => {
-    //       node = event.target;
-    //       console.log(node)
-    //       cy.animate({fit: {eles: node, padding: 50}}, {duration: 300});
-    //     }, 305);
-    //   });
+      areNodesInViewport = (nodes) => {
+        const ext = cy.extent()
+        return nodes.every(node => {
+          bb = node.boundingBox();
+          return bb.x1 > ext.x1 && bb.x2 < ext.x2 && bb.y1 > ext.y1 && bb.y2 < ext.y2;
+        });
+      }
+
+      cy.on("expandcollapse.aftercollapse", function(event) {
+        setTimeout(() => {
+          parent = event.target.parent();
+          if (!areNodesInViewport([parent])) {
+            cy.animate({fit: {eles: parent, padding: 50}}, {duration: 300});
+          } else if (areNodesInViewport(cy.nodes())) {
+            cy.animate({fit: {padding: 50}}, {duration: 300});
+          } else {
+            cy.animate({center: {eles: parent}}, {duration: 300});
+          }
+        }, 5);
+      });
     });
   </script>
 </head>
