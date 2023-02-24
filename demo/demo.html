@@ -1,0 +1,182 @@
+<!DOCTYPE>
+
+<html>
+
+<head>
+  <title>cytoscape-expand-collapse.js demo</title>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <script src="unpkg/cytoscape.min.js"></script>
+
+  <!-- for testing with local version of cytoscape.js -->
+  <!--<script src="../cytoscape.js/build/cytoscape.js"></script>-->
+  <script src="unpkg/layout-base.js"></script>
+  <script src="unpkg/cose-base.js"></script>
+  <script src="unpkg/cytoscape-fcose.js"></script>
+  <script src="../cytoscape-expand-collapse.js"></script>
+  <script src="../../graph.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+      var cy = window.cy = cytoscape({
+        container: document.getElementById('cy'),
+        layout: {
+          name: 'fcose',
+          animate: false,
+        },
+        style: [
+          {
+            selector: 'node',
+            style: {
+              'background-color': '#636fb1',
+              'border-color': '#636fb1',
+              label: 'data(label)',
+              width: 70,
+              height: 20,
+              "shape": "rectangle",
+              "font-size": 4
+            }
+          },
+          {
+            selector: ':parent',
+            style: {
+              'background-opacity': 0.66,
+              'background-color': 'lightgray',
+              'border-color': 'green'
+            }
+          },
+          {
+            selector: "node.cy-expand-collapse-collapsed-node",
+            style: {
+              "background-color": "green",
+              'border-color': 'green',
+              "shape": "rectangle",
+              'text-halign':'center',
+              'text-valign':'center',
+            }
+          },
+          {
+            selector: "[element]",
+            style: {
+              'text-halign':'center',
+              'text-valign':'center',
+            }
+          },
+          {
+            selector: 'edge',
+            style: {
+              'width': 1,
+              'line-color': '#636fb1',
+              'curve-style': 'straight',
+              'target-arrow-shape': 'triangle',
+              'target-arrow-color': '#636fb1',
+              'arrow-scale': '0.5'
+            }
+          },
+          {
+            selector: 'edge.meta',
+            style: {
+              'width': 2,
+              'line-color': 'red'
+            }
+          },
+          {
+            selector: ':selected',
+            style: {
+              'border-style': 'dashed',
+              'border-width': '1px',
+            }
+          }
+        ],
+        elements: window.graph });
+
+      var api = cy.expandCollapse({
+        layoutBy: {
+          name: "fcose",
+          animate: false,
+          animationDuration: 300,
+          randomize: false,
+          fit: false
+        },
+        animate: false,
+        fisheye: false,
+        undoable: false,
+        expandCueImage: "icon-plus.png",
+        collapseCueImage: "icon-minus.png"
+      });
+
+      // cy.nodes().on("tap", (event) => {console.log(event.target);})
+
+
+      document.getElementById("collapseRecursively").addEventListener("click", function () {
+        api.collapseRecursively(cy.$(":selected"));
+      });
+
+      document.getElementById("expandRecursively").addEventListener("click", function () {
+        api.expandRecursively(cy.$(":selected"));
+      });
+
+      document.getElementById("collapseAll").addEventListener("click", function () {
+        api.collapseAll();
+      });
+
+      document.getElementById("expandAll").addEventListener("click", function () {
+        api.expandAll();
+      });
+
+
+
+      cy.on("expandcollapse.afterexpand", function(event) {
+        setTimeout(() => {
+          node = event.target;
+          cy.animate({fit: {padding: 50}}, {duration: 300});
+        }, 5);
+
+        setTimeout(() => {
+          node = event.target;
+          cy.animate({fit: {eles: node, padding: 50}}, {duration: 300});
+        }, 310);
+
+        event.stopPropagation();
+      });
+
+
+
+      api.collapseRecursively(cy.nodes().filter(node => node.data().bin));
+
+      setTimeout(() => {
+        cy.animate({fit: {padding: 50}}, {duration: 300});
+      }, 5);
+
+
+    //   cy.on("expandcollapse.aftercollapse", function(event) {
+    //     setTimeout(() => {
+    //       node = event.target;
+    //       console.log(node)
+    //       cy.animate({fit: {eles: node, padding: 50}}, {duration: 300});
+    //     }, 305);
+    //   });
+    });
+  </script>
+</head>
+
+<body>
+  <h1>cytoscape-expand-collapse demo</h1>
+
+  <div class="fleft">
+    <div class="menu-container">
+      <button id="collapseAll">Collapse all</button> <br />
+      <button id="expandAll">Expand all</button> <br />
+      <button id="collapseRecursively">Collapse selected recursively</button> <br />
+      <button id="expandRecursively">Expand selected recursively</button>
+    </div>
+  </div>
+
+  <div class="fright" id="cy"></div>
+
+</body>
+
+</html>
