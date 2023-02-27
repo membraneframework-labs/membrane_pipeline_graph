@@ -19,8 +19,16 @@
   <script src="../graph.js"></script>
 
   <script>
-    document.addEventListener('DOMContentLoaded', function () {
+    const is_key_down = (() => {
+        const state = {};
 
+        window.addEventListener('keyup', (e) => state[e.key] = false);
+        window.addEventListener('keydown', (e) => state[e.key] = true);
+
+        return (key) => state.hasOwnProperty(key) && state[key] || false;
+    })();
+
+    document.addEventListener('DOMContentLoaded', function () {
       var cy = window.cy = cytoscape({
         container: document.getElementById('cy'),
         layout: {
@@ -94,6 +102,7 @@
             }
           }
         ],
+        autoungrabify: true,
         elements: window.graph });
 
       var api = cy.expandCollapse({
@@ -177,6 +186,38 @@
           }
         }, 5);
       });
+
+      function globalPanning(cy, enabled) {
+        let startPosition;
+        cy.on('mousedown', 'node, edge', (evt) => {
+          const e = evt.originalEvent;
+          if (enabled() && e.button === 0) {
+            startPosition = evt.position;
+          }
+        });
+        cy.on('mouseup', (evt) => {
+          const e = (evt.originalEvent);
+          if (e.button === 0) {
+            startPosition = null;
+          }
+        });
+        cy.on('mousemove', (evt) => {
+          const e = (evt.originalEvent) ;
+          if (startPosition) {
+            const zoom = cy.zoom();
+            const relativePosition = {
+              x: (evt.position.x - startPosition.x) * zoom,
+              y: (evt.position.y - startPosition.y) * zoom,
+            };
+            cy.panBy(relativePosition);
+          }
+      });
+    }
+    globalPanning(cy, () => !is_key_down('Alt'));
+
+    window.addEventListener('keydown', (e) => {if (e.key == 'Alt') cy.autoungrabify(false)});
+    window.addEventListener('keyup', (e) => {if (e.key == 'Alt') cy.autoungrabify(true)});
+
     });
   </script>
 </head>
