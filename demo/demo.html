@@ -28,6 +28,14 @@
         return (key) => state.hasOwnProperty(key) && state[key] || false;
     })();
 
+    const areNodesInViewport = (nodes) => {
+        const ext = cy.extent()
+        return nodes.every(node => {
+          bb = node.boundingBox();
+          return bb.x1 > ext.x1 && bb.x2 < ext.x2 && bb.y1 > ext.y1 && bb.y2 < ext.y2;
+        });
+      }
+
     document.addEventListener('DOMContentLoaded', function () {
       var cy = window.cy = cytoscape({
         container: document.getElementById('cy'),
@@ -35,7 +43,9 @@
           name: 'fcose',
           animate: false,
           randomize: false,
-          quality: 'proof'
+          quality: 'proof',
+          minEdgeLength: 50,
+          samplingType: false
         },
         style: [
           {
@@ -108,22 +118,17 @@
       var api = cy.expandCollapse({
         layoutBy: {
           name: "fcose",
-          animate: false,
+          animate: true,
           animationDuration: 300,
           randomize: false,
           fit: false,
-          minEdgeLength: 50
         },
-        animate: true,
-        animationDuration: 500,
+        animate: false,
         fisheye: true,
         undoable: false,
         expandCueImage: "icon-plus.png",
         collapseCueImage: "icon-minus.png"
       });
-
-      // cy.nodes().on("tap", (event) => {console.log(event.target);})
-
 
       document.getElementById("collapseRecursively").addEventListener("click", function () {
         api.collapseRecursively(cy.$(":selected"));
@@ -141,50 +146,63 @@
         api.expandAll();
       });
 
+      var zoom = 1;
+      cy.on("zoom", () => {zoom = cy.zoom();})
 
+      var tappedBefore;
+      var tappedTimeout;
 
-      cy.on("expandcollapse.afterexpand", function(event) {
-        // setTimeout(() => {
-        //   node = event.target;
-        //   cy.animate({fit: {padding: 50}}, {duration: 300});
-        // }, 5);
-
-        setTimeout(() => {
-          node = event.target;
-          cy.animate({fit: {eles: node, padding: 50}}, {duration: 500});
-        }, 5);
-
-        event.stopPropagation();
+      cy.on('tap', function(event) {
+        var tappedNow = event.target;
+        tappedNow.data("interaction", "tap");
+        if (tappedTimeout && tappedBefore) {
+          clearTimeout(tappedTimeout);
+        }
+        if(tappedBefore === tappedNow) {
+          tappedNow.data("interaction", "doubleTap")
+          api.expand(event.target);
+          tappedBefore = null;
+          originalTapEvent = null;
+        } else {
+          tappedTimeout = setTimeout(function(){ tappedBefore = null; }, 300);
+          tappedBefore = tappedNow;
+        }
       });
 
 
+      cy.on("expandcollapse.beforeexpand", function(event) {
+        const interaction = event.target.data("interaction");
+        event.target.data("interaction", null);
+        setTimeout(() => {
+          node = event.target;
+          if (interaction == "doubleTap") {
+            cy.animate({fit: {eles: node, padding: 50}}, {duration: 500});
+          } else if (interaction == "tap") {
+            cy.animate({fit: {eles: node.parent(), padding: 50}}, {duration: 500});
+          }
+        }, 305);
+      });
 
       api.collapseRecursively(cy.nodes().filter(node => node.data().bin));
 
       setTimeout(() => {
         cy.animate({fit: {padding: 50}}, {duration: 100});
-      }, 5);
-
-
-      areNodesInViewport = (nodes) => {
-        const ext = cy.extent()
-        return nodes.every(node => {
-          bb = node.boundingBox();
-          return bb.x1 > ext.x1 && bb.x2 < ext.x2 && bb.y1 > ext.y1 && bb.y2 < ext.y2;
-        });
-      }
+      }, 400);
 
       cy.on("expandcollapse.aftercollapse", function(event) {
-        setTimeout(() => {
-          parent = event.target.parent();
-          if (!areNodesInViewport([parent])) {
-            cy.animate({fit: {eles: parent, padding: 50}}, {duration: 300});
-          } else if (areNodesInViewport(cy.nodes())) {
-            cy.animate({fit: {padding: 50}}, {duration: 300});
-          } else {
-            cy.animate({center: {eles: parent}}, {duration: 300});
-          }
-        }, 5);
+        if (event.target.data("interaction")) {
+          event.target.data("interaction", null)
+          setTimeout(() => {
+            parent = event.target.parent();
+            if (!areNodesInViewport([parent])) {
+              cy.animate({fit: {eles: parent, padding: 50}}, {duration: 300});
+            } else if (areNodesInViewport(cy.nodes())) {
+              cy.animate({fit: {padding: 50}}, {duration: 300});
+            } else {
+              cy.animate({center: {eles: parent}}, {duration: 300});
+            }
+          }, 5);
+        }
       });
 
       function globalPanning(cy, enabled) {
