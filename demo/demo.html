@@ -37,16 +37,16 @@
       }
 
     document.addEventListener('DOMContentLoaded', function () {
-      var cy = window.cy = cytoscape({
-        container: document.getElementById('cy'),
-        layout: {
+      window.layoutOpts = {
           name: 'fcose',
           animate: false,
           randomize: false,
           quality: 'proof',
           minEdgeLength: 50,
-          samplingType: false
-        },
+        }
+      var cy = window.cy = cytoscape({
+        container: document.getElementById('cy'),
+        layout: window.layoutOpts,
         style: [
           {
             selector: 'node',
@@ -112,8 +112,10 @@
             }
           }
         ],
-        autoungrabify: true,
-        elements: window.graph });
+        // autoungrabify: true,
+        elements: window.graph,
+        wheelSensitivity: 1
+      });
 
       var api = cy.expandCollapse({
         layoutBy: {
@@ -130,6 +132,8 @@
         collapseCueImage: "icon-minus.png"
       });
 
+      window.api = api;
+
       document.getElementById("collapseRecursively").addEventListener("click", function () {
         api.collapseRecursively(cy.$(":selected"));
       });
@@ -140,11 +144,16 @@
 
       document.getElementById("collapseAll").addEventListener("click", function () {
         api.collapseAll();
+        setTimeout(() => cy.animate({fit: {padding: 50}}), 305);
       });
 
       document.getElementById("expandAll").addEventListener("click", function () {
         api.expandAll();
+        setTimeout(() => cy.animate({fit: {padding: 50}}), 305);
       });
+
+      document.getElementById("addGraph").addEventListener("click", addGraph);
+      document.getElementById("reLayout").addEventListener("click", reLayout);
 
       var zoom = 1;
       cy.on("zoom", () => {zoom = cy.zoom();})
@@ -173,14 +182,16 @@
       cy.on("expandcollapse.beforeexpand", function(event) {
         const interaction = event.target.data("interaction");
         event.target.data("interaction", null);
-        setTimeout(() => {
-          node = event.target;
-          if (interaction == "doubleTap") {
-            cy.animate({fit: {eles: node, padding: 50}}, {duration: 500});
-          } else if (interaction == "tap") {
-            cy.animate({fit: {eles: node.parent(), padding: 50}}, {duration: 500});
-          }
-        }, 305);
+        if (interaction) {
+          setTimeout(() => {
+            node = event.target;
+            if (interaction == "doubleTap") {
+              cy.animate({fit: {eles: node, padding: 50}}, {duration: 500});
+            } else if (interaction == "tap") {
+              cy.animate({fit: {eles: node.parent(), padding: 50}}, {duration: 500});
+            }
+          }, 305);
+        }
       });
 
       api.collapseRecursively(cy.nodes().filter(node => node.data().bin));
@@ -237,6 +248,28 @@
     window.addEventListener('keyup', (e) => {if (e.key == 'Alt') cy.autoungrabify(true)});
 
     });
+
+    function addGraph() {
+      const collapsed_children = api.getAllCollapsedChildrenRecursively();
+      const collapsed_parents = cy.elements(".cy-expand-collapse-collapsed-node");
+      api.expandAll();
+      const new_elements = cy.add(graph1);
+      cy.layout(layoutOpts).run();
+      api.collapse(new_elements);
+      api.collapse(collapsed_children);
+      api.collapse(collapsed_parents);
+      cy.layout(layoutOpts).run();
+    }
+
+    function reLayout() {
+      const collapsed_children = api.getAllCollapsedChildrenRecursively();
+      const collapsed_parents = cy.elements(".cy-expand-collapse-collapsed-node");
+      api.expandAll();
+      cy.layout(layoutOpts).run();
+      api.collapse(collapsed_children);
+      api.collapse(collapsed_parents);
+      cy.layout(layoutOpts).run();
+    }
   </script>
 </head>
 
@@ -248,7 +281,9 @@
       <button id="collapseAll">Collapse all</button> <br />
       <button id="expandAll">Expand all</button> <br />
       <button id="collapseRecursively">Collapse selected recursively</button> <br />
-      <button id="expandRecursively">Expand selected recursively</button>
+      <button id="expandRecursively">Expand selected recursively</button> <br />
+      <button id="addGraph">Add more components</button> <br />
+      <button id="reLayout">Refresh layout</button> <br />
     </div>
   </div>
 
