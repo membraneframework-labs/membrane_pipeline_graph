@@ -58,15 +58,20 @@
               width: 70,
               height: 20,
               "shape": "rectangle",
-              "font-size": 4
+              "font-size": 4,
+              'z-index-compare': 'manual',
+              'z-index': (node) => node.ancestors().length * 10,
+              'z-compound-depth': 'orphan'
             }
           },
           {
-            selector: ':parent',
+            selector: 'node:parent',
             style: {
               'background-opacity': 0.66,
               'background-color': 'lightgray',
-              'border-color': 'green'
+              'border-color': 'green',
+              "font-size": 8,
+              'z-index': (node) => node.ancestors().length * 10 + 2,
             }
           },
           {
@@ -90,11 +95,17 @@
             selector: 'edge',
             style: {
               'width': 1,
-              'line-color': '#636fb1',
+              'line-color': '#6368b1',
               'curve-style': 'straight',
               'target-arrow-shape': 'triangle',
-              'target-arrow-color': '#636fb1',
-              'arrow-scale': '0.5'
+              'target-arrow-color': '#6368b1',
+              'arrow-scale': '0.5',
+              'z-index': (edge) => (
+                Math.max(edge.source().ancestors().length, edge.target().ancestors().length) * 10 + 1
+              ),
+              'z-index-compare': 'manual',
+              'z-compound-depth': 'orphan',
+              'overlay-opacity': 0,
             }
           },
           {
