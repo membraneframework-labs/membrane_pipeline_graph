@@ -168,30 +168,35 @@
           clearTimeout(tappedTimeout);
         }
         if(tappedBefore === tappedNow) {
-          tappedNow.data("interaction", "doubleTap")
+          tappedNow.data("interaction", "doubleTap");
           api.expand(event.target);
           tappedBefore = null;
           originalTapEvent = null;
         } else {
-          tappedTimeout = setTimeout(function(){ tappedBefore = null; }, 300);
+          tappedTimeout = setTimeout(function(){
+            tappedBefore = null;
+            tappedNow.data("interaction", null);
+          }, 300);
           tappedBefore = tappedNow;
         }
       });
 
 
-      cy.on("expandcollapse.beforeexpand", function(event) {
-        const interaction = event.target.data("interaction");
-        event.target.data("interaction", null);
-        if (interaction) {
-          setTimeout(() => {
-            node = event.target;
-            if (interaction == "doubleTap") {
-              cy.animate({fit: {eles: node, padding: 50}}, {duration: 500});
-            } else if (interaction == "tap") {
-              cy.animate({fit: {eles: node.parent(), padding: 50}}, {duration: 500});
-            }
-          }, 305);
-        }
+      cy.on("expandcollapse.afterexpand", function(event) {
+        setTimeout(() => {
+          const interaction = event.target.data("interaction");
+          event.target.data("interaction", null);
+          if (interaction) {
+            setTimeout(() => {
+              node = event.target;
+              if (interaction == "doubleTap") {
+                cy.animate({fit: {eles: node, padding: 50}}, {duration: 500});
+              } else if (interaction == "tap") {
+                cy.animate({fit: {eles: node.parent(), padding: 50}}, {duration: 500});
+              }
+            }, 305);
+          }
+        }, 5);
       });
 
       api.collapseRecursively(cy.nodes().filter(node => node.data().bin));
@@ -201,19 +206,21 @@
       }, 400);
 
       cy.on("expandcollapse.aftercollapse", function(event) {
-        if (event.target.data("interaction")) {
-          event.target.data("interaction", null)
-          setTimeout(() => {
-            parent = event.target.parent();
-            if (!areNodesInViewport([parent])) {
-              cy.animate({fit: {eles: parent, padding: 50}}, {duration: 300});
-            } else if (areNodesInViewport(cy.nodes())) {
-              cy.animate({fit: {padding: 50}}, {duration: 300});
-            } else {
-              cy.animate({center: {eles: parent}}, {duration: 300});
-            }
-          }, 5);
-        }
+        setTimeout(() => {
+          if (event.target.data("interaction")) {
+            event.target.data("interaction", null)
+            setTimeout(() => {
+              parent = event.target.parent();
+              if (!areNodesInViewport([parent])) {
+                cy.animate({fit: {eles: parent, padding: 50}}, {duration: 300});
+              } else if (areNodesInViewport(cy.nodes())) {
+                cy.animate({fit: {padding: 50}}, {duration: 300});
+              } else {
+                cy.animate({center: {eles: parent}}, {duration: 300});
+              }
+            }, 505);
+          }
+        }, 5);
       });
 
       function globalPanning(cy, enabled) {
