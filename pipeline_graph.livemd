@@ -1,0 +1,67 @@
+# pipeline graph
+
+```elixir
+Mix.install([:kino])
+```
+
+## Section
+
+```elixir
+defmodule PipelineGraph do
+  use Kino.JS
+  use Kino.JS.Live
+
+  def new(graph) do
+    Kino.JS.Live.new(__MODULE__, graph)
+  end
+
+  def add_graph(kino, graph) do
+    Kino.JS.Live.cast(kino, {:add_graph, graph})
+  end
+
+  @impl true
+  def init(graph, ctx) do
+    {:ok, assign(ctx, graph: graph)}
+  end
+
+  @impl true
+  def handle_connect(ctx) do
+    {:ok, ctx.assigns.graph, ctx}
+  end
+
+  @impl true
+  def handle_cast({:add_graph, graph}, ctx) do
+    broadcast_event(ctx, "add_graph", graph)
+    {:noreply, ctx}
+  end
+
+  asset "app.js" do
+    File.read!("/Users/matheksm/Desktop/sm/membrane_test/graphs_proj/out.js")
+  end
+
+  asset "main.js" do
+    """
+    import "./app.js";
+
+    export function init(ctx, graph) {
+      ctx.root.innerHTML = `
+      <div id="graphContainer" style="width:800px;height:600px;padding:25px;border:1px solid black;border-radius: 15px"></div>
+      `
+      const graphState = runGraph(document.querySelector("#graphContainer"));
+      addGraph(graphState, JSON.parse(graph))
+      ctx.handleEvent("add_graph", (graph) => {
+        addGraph(graphState, JSON.parse(graph))
+      });
+    }
+    """
+  end
+end
+
+graph = File.read!("/Users/matheksm/Desktop/sm/membrane_test/graphs_proj/graph0.json")
+pg = PipelineGraph.new(graph)
+```
+
+```elixir
+graph = File.read!("/Users/matheksm/Desktop/sm/membrane_test/graphs_proj/graph1.json")
+PipelineGraph.add_graph(pg, graph)
+```
