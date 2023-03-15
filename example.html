@@ -15,8 +15,8 @@
   <div id="graph-container" style="width: 97%; height: 97%;"></div>
 
   <script>
-    window.graphState = runGraph(document.querySelector("#graph-container"));
-    addGraph(window.graphState, window.graph);
+    window.mg = new MembraneGraph(document.querySelector("#graph-container"));
+    mg.addData(window.graph);
   </script>
 </body>
 
