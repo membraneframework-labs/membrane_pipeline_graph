@@ -84,7 +84,7 @@ defmodule PipelineGraph do
 
     export function init(ctx, graph) {
       ctx.root.innerHTML = `
-      <div id="graphContainer" style="width:800px;height:600px;padding:25px;border:1px solid black;border-radius: 15px"></div>
+      <div id="graphContainer" style="max-width:890px;height:600px;border:1px solid black;border-radius:15px"></div>
       `
       const mg = new MembraneGraph(document.querySelector("#graphContainer"));
       mg.addData(graph)

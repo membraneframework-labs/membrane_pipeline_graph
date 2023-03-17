@@ -3,14 +3,90 @@ import fcose from 'cytoscape-fcose'
 import expandCollapse from 'cytoscape-expand-collapse'
 
 
-const is_key_down = (() => {
-  const state = {};
+const layoutOpts = {
+  name: 'fcose',
+  animate: false,
+  randomize: false,
+  quality: 'proof',
+  minEdgeLength: 50,
+}
 
-  window.addEventListener('keyup', (e) => state[e.key] = false);
-  window.addEventListener('keydown', (e) => state[e.key] = true);
-
-  return (key) => state.hasOwnProperty(key) && state[key] || false;
-})();
+const cyStyle = [
+  {
+    selector: 'node',
+    style: {
+      'overlay-opacity': 0,
+      'background-color': '#636fb1',
+      'border-color': '#636fb1',
+      label: 'data(label)',
+      width: 70,
+      height: 20,
+      "shape": "rectangle",
+      "font-size": 4,
+      'z-index-compare': 'manual',
+      'z-index': (node) => node.ancestors().length * 10,
+      'z-compound-depth': 'orphan'
+    }
+  },
+  {
+    selector: 'node:parent',
+    style: {
+      'background-opacity': 0.66,
+      'background-color': 'lightgray',
+      'border-color': 'green',
+      "font-size": 8,
+      'z-index': (node) => node.ancestors().length * 10 + 2,
+    }
+  },
+  {
+    selector: "node.cy-expand-collapse-collapsed-node",
+    style: {
+      "background-color": "green",
+      'border-color': 'green',
+      "shape": "rectangle",
+      'text-halign': 'center',
+      'text-valign': 'center',
+    }
+  },
+  {
+    selector: "[element]",
+    style: {
+      'text-halign': 'center',
+      'text-valign': 'center',
+    }
+  },
+  {
+    selector: 'edge',
+    style: {
+      'width': 1,
+      'line-color': '#6368b1',
+      'curve-style': 'straight',
+      'target-arrow-shape': 'triangle',
+      'target-arrow-color': '#6368b1',
+      'arrow-scale': '0.5',
+      'z-index': (edge) => (
+        Math.max(edge.source().ancestors().length, edge.target().ancestors().length) * 10 + 1
+      ),
+      'z-index-compare': 'manual',
+      'z-compound-depth': 'orphan',
+      'overlay-opacity': 0,
+    }
+  },
+  {
+    selector: 'edge.meta',
+    style: {
+      'width': 2,
+      'line-color': 'red'
+    }
+  },
+  {
+    selector: ':selected',
+    style: {
+      'border-style': 'dashed',
+      'border-width': '1px',
+    }
+  }
+]
 
 const areNodesInViewport = (cy, nodes) => {
   const ext = cy.extent()
@@ -20,20 +96,43 @@ const areNodesInViewport = (cy, nodes) => {
   });
 }
 
-const layoutOpts = {
-  name: 'fcose',
-  animate: false,
-  randomize: false,
-  quality: 'proof',
-  minEdgeLength: 50,
+function globalPanning(cy, enabled) {
+  let startPosition;
+  cy.on('mousedown', 'node, edge', (evt) => {
+    const e = evt.originalEvent;
+    if (enabled(evt) && e.button === 0) {
+      startPosition = evt.position;
+    }
+  });
+  cy.on('mouseup', (evt) => {
+    const e = (evt.originalEvent);
+    if (e.button === 0) {
+      startPosition = null;
+    }
+  });
+  cy.on('mousemove', (evt) => {
+    const e = (evt.originalEvent);
+    if (startPosition) {
+      const zoom = cy.zoom();
+      const relativePosition = {
+        x: (evt.position.x - startPosition.x) * zoom,
+        y: (evt.position.y - startPosition.y) * zoom,
+      };
+      cy.panBy(relativePosition);
+    }
+  });
 }
 
 export class MembraneGraph {
 
+  interactedItem = null;
+  interactionTimeout = null;
+  ctrlKeyPressed = false;
+
   constructor(container) {
     container.innerHTML = `
     <div style="width: 100%; height: 100%">
-      <div class="menu-container" style="position: absolute;z-index: 1000">
+      <div class="menu-container" style="position: absolute;z-index: 1000;padding: 20px;">
         <button id="collapseAll">Collapse all</button>
         <button id="expandAll">Expand all</button>
         <button id="collapseRecursively">Collapse selected recursively</button>
@@ -51,82 +150,8 @@ export class MembraneGraph {
       container: document.getElementById('cy'),
       layout: layoutOpts,
       autoungrabify: true,
-      style: [
-        {
-          selector: 'node',
-          style: {
-            'overlay-opacity': 0,
-            'background-color': '#636fb1',
-            'border-color': '#636fb1',
-            label: 'data(label)',
-            width: 70,
-            height: 20,
-            "shape": "rectangle",
-            "font-size": 4,
-            'z-index-compare': 'manual',
-            'z-index': (node) => node.ancestors().length * 10,
-            'z-compound-depth': 'orphan'
-          }
-        },
-        {
-          selector: 'node:parent',
-          style: {
-            'background-opacity': 0.66,
-            'background-color': 'lightgray',
-            'border-color': 'green',
-            "font-size": 8,
-            'z-index': (node) => node.ancestors().length * 10 + 2,
-          }
-        },
-        {
-          selector: "node.cy-expand-collapse-collapsed-node",
-          style: {
-            "background-color": "green",
-            'border-color': 'green',
-            "shape": "rectangle",
-            'text-halign': 'center',
-            'text-valign': 'center',
-          }
-        },
-        {
-          selector: "[element]",
-          style: {
-            'text-halign': 'center',
-            'text-valign': 'center',
-          }
-        },
-        {
-          selector: 'edge',
-          style: {
-            'width': 1,
-            'line-color': '#6368b1',
-            'curve-style': 'straight',
-            'target-arrow-shape': 'triangle',
-            'target-arrow-color': '#6368b1',
-            'arrow-scale': '0.5',
-            'z-index': (edge) => (
-              Math.max(edge.source().ancestors().length, edge.target().ancestors().length) * 10 + 1
-            ),
-            'z-index-compare': 'manual',
-            'z-compound-depth': 'orphan',
-            'overlay-opacity': 0,
-          }
-        },
-        {
-          selector: 'edge.meta',
-          style: {
-            'width': 2,
-            'line-color': 'red'
-          }
-        },
-        {
-          selector: ':selected',
-          style: {
-            'border-style': 'dashed',
-            'border-width': '1px',
-          }
-        }
-      ],
+      style: cyStyle,
+      userZoomingEnabled: false,
     });
 
     const api = cy.expandCollapse({
@@ -164,26 +189,25 @@ export class MembraneGraph {
 
     document.getElementById("reLayout").addEventListener("click", () => this.reLayout());
 
-    var tappedBefore;
-    var tappedTimeout;
-
-    cy.on('tap', function (event) {
-      var tappedNow = event.target;
-      tappedNow.data("interaction", "tap");
-      if (tappedTimeout && tappedBefore) {
-        clearTimeout(tappedTimeout);
+    cy.on('tap', (event) => {
+      const target = event.target;
+      target.data("interaction", "tap");
+      if (this.interactionTimeout) {
+        clearTimeout(this.interactionTimeout);
       }
-      if (tappedBefore === tappedNow) {
-        tappedNow.data("interaction", "doubleTap");
-        api.expand(event.target);
-        tappedBefore = null;
+      if (this.interactedItem === target) {
+        target.data("interaction", "doubleTap");
+        if (target.isNode && target.isNode()) {
+          api.expand(target);
+        }
+        this.interactedItem = null;
       } else {
-        tappedTimeout = setTimeout(function () {
-          tappedBefore = null;
-          tappedNow.data("interaction", null);
-        }, 300);
-        tappedBefore = tappedNow;
+        this.interactedItem = target;
       }
+      this.interactionTimeout = setTimeout(() => {
+        this.interactedItem = null;
+        target.data("interaction", null);
+      }, 300);
     });
 
 
@@ -204,12 +228,6 @@ export class MembraneGraph {
       }, 5);
     });
 
-    api.collapseRecursively(cy.nodes().filter(node => node.data().bin));
-
-    setTimeout(() => {
-      cy.animate({ fit: { padding: 50 } }, { duration: 100 });
-    }, 400);
-
     cy.on("expandcollapse.aftercollapse", function (event) {
       const node = event.target;
       setTimeout(() => {
@@ -229,36 +247,17 @@ export class MembraneGraph {
       }, 5);
     });
 
-    function globalPanning(cy, enabled) {
-      let startPosition;
-      cy.on('mousedown', 'node, edge', (evt) => {
-        const e = evt.originalEvent;
-        if (enabled() && e.button === 0) {
-          startPosition = evt.position;
-        }
-      });
-      cy.on('mouseup', (evt) => {
-        const e = (evt.originalEvent);
-        if (e.button === 0) {
-          startPosition = null;
-        }
-      });
-      cy.on('mousemove', (evt) => {
-        const e = (evt.originalEvent);
-        if (startPosition) {
-          const zoom = cy.zoom();
-          const relativePosition = {
-            x: (evt.position.x - startPosition.x) * zoom,
-            y: (evt.position.y - startPosition.y) * zoom,
-          };
-          cy.panBy(relativePosition);
-        }
-      });
-    }
-    globalPanning(cy, () => !is_key_down('Alt'));
+    cy.on('mousemove', 'node, edge', (e) => cy.autoungrabify(!e.originalEvent.altKey));
+    globalPanning(cy, (e) => !e.originalEvent.altKey);
 
-    window.addEventListener('keydown', (e) => { if (e.key == 'Alt') cy.autoungrabify(false); });
-    window.addEventListener('keyup', (e) => { if (e.key == 'Alt') cy.autoungrabify(true) });
+    document.querySelector("body").addEventListener('click', () => cy.userZoomingEnabled(true));
+    document.querySelector("body").addEventListener('mouseleave', () => cy.userZoomingEnabled(false));
+
+    api.collapseRecursively(cy.nodes().filter(node => node.data().bin));
+
+    setTimeout(() => {
+      cy.animate({ fit: { padding: 50 } }, { duration: 100 });
+    }, 400);
 
     this.cy = cy;
     this.api = api;
