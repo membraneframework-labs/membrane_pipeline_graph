@@ -266,16 +266,32 @@ export class MembraneGraph {
 
 
   addData(graphData) {
+    console.debug("add graph data");
     const { api, cy } = this;
     const collapsed_children = api.getAllCollapsedChildrenRecursively();
     const collapsed_parents = cy.elements(".cy-expand-collapse-collapsed-node");
     api.expandAll();
-    const new_elements = cy.add(graphData);
-    cy.layout(layoutOpts).run();
-    api.collapse(new_elements);
+    console.debug("expanded data");
+    if (cy.nodes().length + graphData.length < 20) {
+      const new_elements = graphData.map(graphElement => {
+        const element = cy.add([graphElement]);
+        cy.layout(layoutOpts).run();
+        return element;
+      });
+      new_elements.forEach((e) => api.collapse(e));
+    } else {
+      console.debug("adding data");
+      const new_elements = cy.add(graphData);
+      console.debug("added data");
+      cy.layout(layoutOpts).run();
+      console.debug("run layout");
+      api.collapse(new_elements);
+    }
     api.collapse(collapsed_children);
     api.collapse(collapsed_parents);
+    console.debug("collapse");
     cy.layout(layoutOpts).run();
+    console.debug("run layout again");
   }
 
 

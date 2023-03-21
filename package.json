@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "build": "esbuild app.js --bundle --outfile=out.js"
+    "build": "esbuild app.js --bundle --outfile=out.js && cp out.js ../../membrane/membrane_core/priv/graph.js"
   },
   "dependencies": {
     "cytoscape-expand-collapse": "^4.1.0",
