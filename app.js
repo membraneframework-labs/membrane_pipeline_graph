@@ -265,24 +265,28 @@ export class MembraneGraph {
   };
 
 
-  addData(graphData) {
+  update(add, remove) {
     console.debug("add graph data");
     const { api, cy } = this;
     const collapsed_children = api.getAllCollapsedChildrenRecursively();
     const collapsed_parents = cy.elements(".cy-expand-collapse-collapsed-node");
     api.expandAll();
     console.debug("expanded data");
-    if (cy.nodes().length + graphData.length < 20) {
-      const new_elements = graphData.map(graphElement => {
+    if (cy.nodes().length + add.length < 20) {
+      const new_elements = add.map(graphElement => {
         const element = cy.add([graphElement]);
         cy.layout(layoutOpts).run();
         return element;
       });
+      remove.forEach((id) => cy.remove(cy.$id(id)));
+      console.debug("removed data");
       new_elements.forEach((e) => api.collapse(e));
     } else {
       console.debug("adding data");
-      const new_elements = cy.add(graphData);
+      const new_elements = cy.add(add);
       console.debug("added data");
+      remove.forEach((id) => cy.remove(cy.$id(id)));
+      console.debug("removed data");
       cy.layout(layoutOpts).run();
       console.debug("run layout");
       api.collapse(new_elements);
@@ -293,7 +297,6 @@ export class MembraneGraph {
     cy.layout(layoutOpts).run();
     console.debug("run layout again");
   }
-
 
   reLayout() {
     const { api, cy } = this;
