@@ -129,7 +129,7 @@ export class MembraneGraph {
   interactionTimeout = null;
   ctrlKeyPressed = false;
 
-  constructor(container) {
+  constructor({ container, onClick: _onClick }) {
     container.innerHTML = `
     <div style="width: 100%; height: 100%">
       <div class="menu-container" style="position: absolute;z-index: 1000;padding: 20px;">
@@ -143,6 +143,8 @@ export class MembraneGraph {
       <div id="cy" style="width: 100%; height: 100%"></div>
     </div>
     `
+
+    const onClick = _onClick || (() => { });
 
     cytoscape.use(fcose);
     expandCollapse(cytoscape);
@@ -196,6 +198,9 @@ export class MembraneGraph {
 
     cy.on('tap', (event) => {
       const target = event.target;
+      if (target.isNode && target.isNode()) {
+        onClick(target.data());
+      }
       target.data("interaction", "tap");
       if (this.interactionTimeout) {
         clearTimeout(this.interactionTimeout);
