@@ -152,6 +152,8 @@ export class MembraneGraph {
       autoungrabify: true,
       style: cyStyle,
       userZoomingEnabled: false,
+      minZoom: 1,
+      wheelSensitivity: 0.5,
     });
 
     const api = cy.expandCollapse({
@@ -188,6 +190,9 @@ export class MembraneGraph {
     });
 
     document.getElementById("reLayout").addEventListener("click", () => this.reLayout());
+
+
+    window.addEventListener('resize', () => { setTimeout(() => { cy.animate({ fit: { padding: 50 } }, { duration: 0 }); }, 400) });
 
     cy.on('tap', (event) => {
       const target = event.target;
