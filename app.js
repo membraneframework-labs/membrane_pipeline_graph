@@ -11,6 +11,8 @@ const layoutOpts = {
   minEdgeLength: 50,
 }
 
+const defaultAnimationDuration = 300;
+
 const cyStyle = [
   {
     selector: 'node',
@@ -123,11 +125,20 @@ function globalPanning(cy, enabled) {
   });
 }
 
+const scheduleForMainLoop = (fun) => {
+  setTimeout(fun, 5);
+}
+
 export class MembraneGraph {
 
   interactedItem = null;
   interactionTimeout = null;
   ctrlKeyPressed = false;
+  workInProgress = false;
+  layoutInProgress = false;
+  awaitingAnimation = null;
+  awaitingAdd = [];
+  awaitingRemove = [];
 
   constructor({ container, onClick: _onClick }) {
     container.innerHTML = `
@@ -158,13 +169,16 @@ export class MembraneGraph {
       wheelSensitivity: 0.5,
     });
 
+    cy.on('mousemove', 'node, edge', (e) => cy.autoungrabify(!e.originalEvent.altKey));
+    globalPanning(cy, (e) => !e.originalEvent.altKey);
+
     const api = cy.expandCollapse({
       layoutBy: {
         name: "fcose",
         animate: true,
-        animationDuration: 300,
+        animationDuration: defaultAnimationDuration,
         randomize: false,
-        fit: false
+        fit: false,
       },
       animate: false,
       fisheye: true,
@@ -173,28 +187,31 @@ export class MembraneGraph {
       collapseCueImage: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAABmJLR0QA/wD/AP+gvaeTAAACNUlEQVRo3u1Zy07CQBQl6sadj5WPjzCRuQORBXZK2BsgfonPjQsfW40a/8FXDHyJhh9AXaj47kNwU+diTQiJ6dAO7aC9yQ1NSDvntHfu40wiEVtssQU2ZyMxYOs0ZTFYszR6ZjKomjo889/Pln9fVy1GTk1GV+35FMV7IgduZ+m0qdEdDu6Wu9Ol35iMbNtaeip04O8Mxg0djjiIpg/gnd6wGD18y6fHQgFvMLrIF32UALzT64ZOSr2L82x2yH3rTi+d75MDXEsu+HR6mD+80mvwbV7GNeWALxYHDQbnIYL/8YqULxFG2PwaTjrsy9iwTpTOMRR8gce0hpkhagKY8TBt91XoBA6lVoWVU6RkeaOriu22B45KzjPhlnBjxm+4Vo0A9luY0r3Dh3eVCoJvua0lwZOApcG6qgRMDZYFcn8kVVewT4IT7w2Mw4jAw2SbGAlyJULgSV0CUBch0FSYQONfEOj7EOrvTezKImqmUR2OvQlwbUfZQsZgybuV4KKTsl8gB8l+buZqwmoeKmbKtdM6bHY70DRUGmis3NxkV1MZyn3qEKB7/oZ6DR4UIHD/msmM+tSESCn62CcLgbQh1CqjI0B2pUiLEVXnijSR1xV3yyEqEBfSxN12eR0FpjAyjpD6EEAvLWBm6AH4u8AbVtQwrblfQ0ax+8C3/pKdGQn9rAyrIypmPnunGrYHVn52Qo1jVi46mTpZQekDBw93smu6jteXrf+4tsNTM1HimDW22P6AfQExbP9jIk1/vwAAAABJRU5ErkJggg=="
     });
 
-    document.getElementById("collapseRecursively").addEventListener("click", function () {
+    document.getElementById("collapseRecursively").addEventListener("click", () => {
       api.collapseRecursively(cy.$(":selected"));
+      scheduleForMainLoop(() => this._animate({ fit: { padding: 50 } }));
     });
 
-    document.getElementById("expandRecursively").addEventListener("click", function () {
+    document.getElementById("expandRecursively").addEventListener("click", () => {
       api.expandRecursively(cy.$(":selected"));
+      scheduleForMainLoop(() => this._animate({ fit: { padding: 50 } }));
     });
 
-    document.getElementById("collapseAll").addEventListener("click", function () {
+    document.getElementById("collapseAll").addEventListener("click", () => {
       api.collapseAll();
-      setTimeout(() => cy.animate({ fit: { padding: 50 } }), 305);
+      scheduleForMainLoop(() => this._animate({ fit: { padding: 50 } }));
     });
 
-    document.getElementById("expandAll").addEventListener("click", function () {
+    document.getElementById("expandAll").addEventListener("click", () => {
       api.expandAll();
-      setTimeout(() => cy.animate({ fit: { padding: 50 } }), 305);
+      scheduleForMainLoop(() => this._animate({ fit: { padding: 50 } }));
     });
 
     document.getElementById("reLayout").addEventListener("click", () => this.reLayout());
 
-
-    window.addEventListener('resize', () => { setTimeout(() => { cy.animate({ fit: { padding: 50 } }, { duration: 0 }); }, 400) });
+    window.addEventListener('resize', () => {
+      scheduleForMainLoop(() => this._animate({ fit: { padding: 50 } }));
+    });
 
     cy.on('tap', (event) => {
       const target = event.target;
@@ -221,53 +238,53 @@ export class MembraneGraph {
     });
 
 
-    cy.on("expandcollapse.afterexpand", function (event) {
-      const node = event.target;
-      setTimeout(() => {
+    cy.on("expandcollapse.afterexpand", (event) => {
+      scheduleForMainLoop(() => {
+        const node = event.target;
         const interaction = node.data("interaction");
         node.data("interaction", null);
-        if (interaction) {
-          setTimeout(() => {
-            if (interaction == "doubleTap") {
-              cy.animate({ fit: { eles: node, padding: 50 } }, { duration: 500 });
-            } else if (interaction == "tap") {
-              cy.animate({ fit: { eles: node.parent(), padding: 50 } }, { duration: 500 });
-            }
-          }, 305);
+        if (interaction == "doubleTap") {
+          this._animate({ fit: { eles: node, padding: 50 } });
+        } else if (interaction == "tap") {
+          this._animate({ fit: { eles: node.parent(), padding: 50 } });
         }
-      }, 5);
+      });
     });
 
-    cy.on("expandcollapse.aftercollapse", function (event) {
-      const node = event.target;
-      setTimeout(() => {
+    cy.on("expandcollapse.aftercollapse", (event) => {
+      scheduleForMainLoop(() => {
+        const node = event.target;
         if (node.data("interaction")) {
           node.data("interaction", null)
-          setTimeout(() => {
-            const parent = !node.isOrphan() && node.parent();
-            if (parent && !areNodesInViewport(cy, [parent])) {
-              cy.animate({ fit: { eles: parent, padding: 50 } }, { duration: 300 });
-            } else if (!parent || areNodesInViewport(cy, cy.nodes())) {
-              cy.animate({ fit: { padding: 50 } }, { duration: 300 });
-            } else {
-              cy.animate({ center: { eles: parent } }, { duration: 300 });
-            }
-          }, 505);
+          const parent = !node.isOrphan() && node.parent();
+          if (parent && !areNodesInViewport(cy, [parent])) {
+            this._animate({ fit: { eles: parent, padding: 50 } });
+          } else if (!parent || areNodesInViewport(cy, cy.nodes())) {
+            this._animate({ fit: { padding: 50 } });
+          } else {
+            this._animate({ center: { eles: parent } });
+          }
         }
-      }, 5);
+      });
     });
 
-    cy.on('mousemove', 'node, edge', (e) => cy.autoungrabify(!e.originalEvent.altKey));
-    globalPanning(cy, (e) => !e.originalEvent.altKey);
+    cy.on("layoutstart", () => {
+      this.layoutInProgress = true;
+    });
+
+    cy.on("layoutstop", () => {
+      this.layoutInProgress = false;
+      scheduleForMainLoop(() => {
+        this._runAwaitingWork();
+      });
+    });
 
     document.querySelector("body").addEventListener('click', () => cy.userZoomingEnabled(true));
     document.querySelector("body").addEventListener('mouseleave', () => cy.userZoomingEnabled(false));
 
     api.collapseRecursively(cy.nodes().filter(node => node.data().bin));
 
-    setTimeout(() => {
-      cy.animate({ fit: { padding: 50 } }, { duration: 100 });
-    }, 400);
+    scheduleForMainLoop(() => this._animate({ fit: { padding: 50 } }, { duration: 100 }));
 
     this.cy = cy;
     this.api = api;
@@ -276,6 +293,12 @@ export class MembraneGraph {
 
 
   update(add, remove) {
+    if (!this._canWork()) {
+      this.awaitingAdd.push(...add);
+      this.awaitingRemove.push(...remove);
+      return;
+    }
+    this.workInProgress = true;
     console.debug("add graph data");
     const { api, cy } = this;
     const collapsed_children = api.getAllCollapsedChildrenRecursively();
@@ -306,6 +329,8 @@ export class MembraneGraph {
     console.debug("collapse");
     cy.layout(layoutOpts).run();
     console.debug("run layout again");
+    this.workInProgress = false;
+    this._runAwaitingWork();
   }
 
   reLayout() {
@@ -318,6 +343,47 @@ export class MembraneGraph {
     api.collapse(collapsed_parents);
     cy.layout(layoutOpts).run();
   }
+
+  _animate(animation, options) {
+    if (!this._canWork()) {
+      this.awaitingAnimation = { animation, options };
+      return;
+    }
+    options = options || {};
+    options.duration = options.duration || defaultAnimationDuration;
+    const complete = options.complete || (() => { });
+    this.workInProgress = true;
+    options.complete = (e) => {
+      complete();
+      this.workInProgress = false;
+      this._runAwaitingWork();
+    }
+    this.cy.animate(animation, options);
+  }
+
+  _canWork() {
+    return !this.layoutInProgress && !this.workInProgress;
+  }
+
+  _runAwaitingWork() {
+    if (!this._canWork()) {
+      return;
+    }
+    if (this.awaitingAnimation) {
+      const { animation, options } = this.awaitingAnimation;
+      this.awaitingAnimation = null;
+      this._animate(animation, options);
+      return;
+    }
+    const { awaitingAdd, awaitingRemove } = this;
+    if (awaitingAdd.length > 0 || awaitingRemove.length > 0) {
+      this.awaitingAdd = [];
+      this.awaitingRemove = [];
+      this.update(awaitingAdd, awaitingRemove);
+      return;
+    }
+  }
+
 }
 
 window.MembraneGraph = MembraneGraph;
