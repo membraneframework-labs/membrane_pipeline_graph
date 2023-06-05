@@ -11,6 +11,23 @@ const layoutOpts = {
   minEdgeLength: 50,
 }
 
+const expandCollapseOpts = {
+  layoutBy: {
+    name: "fcose",
+    animate: true,
+    animationDuration: defaultAnimationDuration,
+    randomize: false,
+    fit: false,
+  },
+  animate: false,
+  fisheye: true,
+  undoable: false,
+  expandCueImage: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAABmJLR0QA/wD/AP+gvaeTAAACOUlEQVRo3u1ZyU7CUBQlTguXDiuHnzAS2bEzhDZtSRqM7v0FjStW4B6NEv8A0yGpuHHhN0jwAxxWCq6pG70XaxQSwpvavmpvchNCoT3nDfeed5rJpJFGGtxhNs1pxTZyRVc7Uh3dKjr6veLob/D5HRM/w/XO4Br+xiptVSqVqdiBa662ptrGMYB7BpAflPmkuFqtYJVWIwdeaJrLMJoNAOEzAB9NH4icqZ66FAl41dV24aE9AcBHs1u0jZ3QgG809mdhqVyEAHwogcQ5PkvsqHvqPNz8Omzwv7KFzxQ38tGC/84bqG5z3ASiWDZjEzY3L/i92MD/kCgzgTdsYxFu8Bo7Aah4TCU2qPNMDx0XzJXJ0U/pGhV0R54mJZoAYoFZWCcffZQHHNMeAgHcCzUi8CiyBjpFNgKgt1A0klSeHO/GC4XAV2YnEkC5KysBWNqHJDNgSzsDtnFJQqDDA5I1iGbA0duTCRBK5TgIYGMlIeBLTKD/LwgkfAklfhMnvYzK3MgA28FkIQemk7Sd2Cptkoq5RwkJPBC7eShdJSRQTfKBpq94ygrdgR4cAYkI1KnPxNtNc0GSQ32X2TdFrzJuAoDB5PKG0KuM0RM6EfPywtGdqMGDC36Vv83PiDR3WxES8ISZu0MmL0dlolk2wkZ+THkth1SdXrg3LI1vinbfoMHwA8d71LFsR/6uDLtjIDtYtBP+p0rdYcOIQABm0bdBzY4Hj+Bk5wfZg+/v8BpKYlSVUrxmTSONPxCf9GPtiVNgCLQAAAAASUVORK5CYII=",
+  collapseCueImage: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAABmJLR0QA/wD/AP+gvaeTAAACNUlEQVRo3u1Zy07CQBQl6sadj5WPjzCRuQORBXZK2BsgfonPjQsfW40a/8FXDHyJhh9AXaj47kNwU+diTQiJ6dAO7aC9yQ1NSDvntHfu40wiEVtssQU2ZyMxYOs0ZTFYszR6ZjKomjo889/Pln9fVy1GTk1GV+35FMV7IgduZ+m0qdEdDu6Wu9Ol35iMbNtaeip04O8Mxg0djjiIpg/gnd6wGD18y6fHQgFvMLrIF32UALzT64ZOSr2L82x2yH3rTi+d75MDXEsu+HR6mD+80mvwbV7GNeWALxYHDQbnIYL/8YqULxFG2PwaTjrsy9iwTpTOMRR8gce0hpkhagKY8TBt91XoBA6lVoWVU6RkeaOriu22B45KzjPhlnBjxm+4Vo0A9luY0r3Dh3eVCoJvua0lwZOApcG6qgRMDZYFcn8kVVewT4IT7w2Mw4jAw2SbGAlyJULgSV0CUBch0FSYQONfEOj7EOrvTezKImqmUR2OvQlwbUfZQsZgybuV4KKTsl8gB8l+buZqwmoeKmbKtdM6bHY70DRUGmis3NxkV1MZyn3qEKB7/oZ6DR4UIHD/msmM+tSESCn62CcLgbQh1CqjI0B2pUiLEVXnijSR1xV3yyEqEBfSxN12eR0FpjAyjpD6EEAvLWBm6AH4u8AbVtQwrblfQ0ax+8C3/pKdGQn9rAyrIypmPnunGrYHVn52Qo1jVi46mTpZQekDBw93smu6jteXrf+4tsNTM1HimDW22P6AfQExbP9jIk1/vwAAAABJRU5ErkJggg=="
+};
+
+const expandCollapseMungeOpts = { layoutBy: null, fisheye: false };
+
 const defaultAnimationDuration = 300;
 
 const cyStyle = [
@@ -172,20 +189,7 @@ export class MembraneGraph {
     cy.on('mousemove', 'node, edge', (e) => cy.autoungrabify(!e.originalEvent.altKey));
     globalPanning(cy, (e) => !e.originalEvent.altKey);
 
-    const api = cy.expandCollapse({
-      layoutBy: {
-        name: "fcose",
-        animate: true,
-        animationDuration: defaultAnimationDuration,
-        randomize: false,
-        fit: false,
-      },
-      animate: false,
-      fisheye: true,
-      undoable: false,
-      expandCueImage: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAABmJLR0QA/wD/AP+gvaeTAAACOUlEQVRo3u1ZyU7CUBQlTguXDiuHnzAS2bEzhDZtSRqM7v0FjStW4B6NEv8A0yGpuHHhN0jwAxxWCq6pG70XaxQSwpvavmpvchNCoT3nDfeed5rJpJFGGtxhNs1pxTZyRVc7Uh3dKjr6veLob/D5HRM/w/XO4Br+xiptVSqVqdiBa662ptrGMYB7BpAflPmkuFqtYJVWIwdeaJrLMJoNAOEzAB9NH4icqZ66FAl41dV24aE9AcBHs1u0jZ3QgG809mdhqVyEAHwogcQ5PkvsqHvqPNz8Omzwv7KFzxQ38tGC/84bqG5z3ASiWDZjEzY3L/i92MD/kCgzgTdsYxFu8Bo7Aah4TCU2qPNMDx0XzJXJ0U/pGhV0R54mJZoAYoFZWCcffZQHHNMeAgHcCzUi8CiyBjpFNgKgt1A0klSeHO/GC4XAV2YnEkC5KysBWNqHJDNgSzsDtnFJQqDDA5I1iGbA0duTCRBK5TgIYGMlIeBLTKD/LwgkfAklfhMnvYzK3MgA28FkIQemk7Sd2Cptkoq5RwkJPBC7eShdJSRQTfKBpq94ygrdgR4cAYkI1KnPxNtNc0GSQ32X2TdFrzJuAoDB5PKG0KuM0RM6EfPywtGdqMGDC36Vv83PiDR3WxES8ISZu0MmL0dlolk2wkZ+THkth1SdXrg3LI1vinbfoMHwA8d71LFsR/6uDLtjIDtYtBP+p0rdYcOIQABm0bdBzY4Hj+Bk5wfZg+/v8BpKYlSVUrxmTSONPxCf9GPtiVNgCLQAAAAASUVORK5CYII=",
-      collapseCueImage: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAABmJLR0QA/wD/AP+gvaeTAAACNUlEQVRo3u1Zy07CQBQl6sadj5WPjzCRuQORBXZK2BsgfonPjQsfW40a/8FXDHyJhh9AXaj47kNwU+diTQiJ6dAO7aC9yQ1NSDvntHfu40wiEVtssQU2ZyMxYOs0ZTFYszR6ZjKomjo889/Pln9fVy1GTk1GV+35FMV7IgduZ+m0qdEdDu6Wu9Ol35iMbNtaeip04O8Mxg0djjiIpg/gnd6wGD18y6fHQgFvMLrIF32UALzT64ZOSr2L82x2yH3rTi+d75MDXEsu+HR6mD+80mvwbV7GNeWALxYHDQbnIYL/8YqULxFG2PwaTjrsy9iwTpTOMRR8gce0hpkhagKY8TBt91XoBA6lVoWVU6RkeaOriu22B45KzjPhlnBjxm+4Vo0A9luY0r3Dh3eVCoJvua0lwZOApcG6qgRMDZYFcn8kVVewT4IT7w2Mw4jAw2SbGAlyJULgSV0CUBch0FSYQONfEOj7EOrvTezKImqmUR2OvQlwbUfZQsZgybuV4KKTsl8gB8l+buZqwmoeKmbKtdM6bHY70DRUGmis3NxkV1MZyn3qEKB7/oZ6DR4UIHD/msmM+tSESCn62CcLgbQh1CqjI0B2pUiLEVXnijSR1xV3yyEqEBfSxN12eR0FpjAyjpD6EEAvLWBm6AH4u8AbVtQwrblfQ0ax+8C3/pKdGQn9rAyrIypmPnunGrYHVn52Qo1jVi46mTpZQekDBw93smu6jteXrf+4tsNTM1HimDW22P6AfQExbP9jIk1/vwAAAABJRU5ErkJggg=="
-    });
+    const api = cy.expandCollapse(expandCollapseOpts);
 
     document.getElementById("collapseRecursively").addEventListener("click", () => {
       api.collapseRecursively(cy.$(":selected"));
@@ -269,10 +273,12 @@ export class MembraneGraph {
     });
 
     cy.on("layoutstart", () => {
+      console.debug("layout start")
       this.layoutInProgress = true;
     });
 
     cy.on("layoutstop", () => {
+      console.debug("layout stop")
       this.layoutInProgress = false;
       scheduleForMainLoop(() => {
         this._runAwaitingWork();
@@ -293,54 +299,58 @@ export class MembraneGraph {
 
 
   update(add, remove) {
+    this.awaitingAdd.push(...add);
+    this.awaitingRemove.push(...remove);
     if (!this._canWork()) {
-      this.awaitingAdd.push(...add);
-      this.awaitingRemove.push(...remove);
       return;
     }
     this.workInProgress = true;
-    console.debug("add graph data");
-    const { api, cy } = this;
-    const collapsed_children = api.getAllCollapsedChildrenRecursively();
-    const collapsed_parents = cy.elements(".cy-expand-collapse-collapsed-node");
-    api.expandAll();
-    console.debug("expanded data");
-    if (cy.nodes().length + add.length < 20) {
-      const new_elements = add.map(graphElement => {
-        const element = cy.add([graphElement]);
+    setTimeout(() => {
+      console.debug("add graph data");
+      const { api, cy, awaitingAdd, awaitingRemove } = this;
+      this.awaitingAdd = [];
+      this.awaitingRemove = [];
+      const collapsed_children = api.getAllCollapsedChildrenRecursively();
+      const collapsed_parents = cy.elements(".cy-expand-collapse-collapsed-node");
+      api.expandAll(expandCollapseMungeOpts);
+      console.debug("expanded data");
+      if (cy.nodes().length + awaitingAdd.length < 20) {
+        const new_elements = awaitingAdd.map(graphElement => {
+          const element = cy.add([graphElement]);
+          cy.layout(layoutOpts).run();
+          return element;
+        });
+        remove.forEach((id) => cy.remove(cy.$id(id)));
+        console.debug("removed data");
+        new_elements.forEach((e) => api.collapse(e, expandCollapseMungeOpts));
+      } else {
+        console.debug("adding data");
+        const new_elements = cy.add(awaitingAdd);
+        console.debug("added data");
+        awaitingRemove.forEach((id) => cy.remove(cy.$id(id)));
+        console.debug("removed data");
         cy.layout(layoutOpts).run();
-        return element;
-      });
-      remove.forEach((id) => cy.remove(cy.$id(id)));
-      console.debug("removed data");
-      new_elements.forEach((e) => api.collapse(e));
-    } else {
-      console.debug("adding data");
-      const new_elements = cy.add(add);
-      console.debug("added data");
-      remove.forEach((id) => cy.remove(cy.$id(id)));
-      console.debug("removed data");
+        console.debug("run layout");
+        api.collapse(new_elements, expandCollapseMungeOpts);
+      }
+      api.collapse(collapsed_children, expandCollapseMungeOpts);
+      api.collapse(collapsed_parents, expandCollapseMungeOpts);
+      console.debug("collapse");
       cy.layout(layoutOpts).run();
-      console.debug("run layout");
-      api.collapse(new_elements);
-    }
-    api.collapse(collapsed_children);
-    api.collapse(collapsed_parents);
-    console.debug("collapse");
-    cy.layout(layoutOpts).run();
-    console.debug("run layout again");
-    this.workInProgress = false;
-    this._runAwaitingWork();
+      console.debug("run layout again");
+      this.workInProgress = false;
+      this._runAwaitingWork();
+    }, 500);
   }
 
   reLayout() {
     const { api, cy } = this;
     const collapsed_children = api.getAllCollapsedChildrenRecursively();
     const collapsed_parents = cy.elements(".cy-expand-collapse-collapsed-node");
-    api.expandAll();
+    api.expandAll(expandCollapseMungeOpts);
     cy.layout(layoutOpts).run();
-    api.collapse(collapsed_children);
-    api.collapse(collapsed_parents);
+    api.collapse(collapsed_children, expandCollapseMungeOpts);
+    api.collapse(collapsed_parents, expandCollapseMungeOpts);
     cy.layout(layoutOpts).run();
   }
 
@@ -358,6 +368,7 @@ export class MembraneGraph {
       this.workInProgress = false;
       this._runAwaitingWork();
     }
+    console.debug("animating");
     this.cy.animate(animation, options);
   }
 
@@ -377,9 +388,7 @@ export class MembraneGraph {
     }
     const { awaitingAdd, awaitingRemove } = this;
     if (awaitingAdd.length > 0 || awaitingRemove.length > 0) {
-      this.awaitingAdd = [];
-      this.awaitingRemove = [];
-      this.update(awaitingAdd, awaitingRemove);
+      this.update([], []);
       return;
     }
   }
