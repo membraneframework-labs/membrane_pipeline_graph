@@ -79,7 +79,8 @@ const cyStyle = [
     style: {
       'width': 1,
       'line-color': '#6368b1',
-      'curve-style': 'straight',
+      'curve-style': 'bezier',
+      'control-point-step-size': 10,
       'target-arrow-shape': 'triangle',
       'target-arrow-color': '#6368b1',
       'arrow-scale': '0.5',
@@ -298,51 +299,6 @@ export class MembraneGraph {
   };
 
 
-  update(add, remove) {
-    this.awaitingAdd.push(...add);
-    this.awaitingRemove.push(...remove);
-    if (!this._canWork()) {
-      return;
-    }
-    this.workInProgress = true;
-    setTimeout(() => {
-      console.debug("add graph data");
-      const { api, cy, awaitingAdd, awaitingRemove } = this;
-      this.awaitingAdd = [];
-      this.awaitingRemove = [];
-      const collapsed_children = api.getAllCollapsedChildrenRecursively();
-      const collapsed_parents = cy.elements(".cy-expand-collapse-collapsed-node");
-      api.expandAll(expandCollapseMungeOpts);
-      console.debug("expanded data");
-      if (cy.nodes().length + awaitingAdd.length < 20) {
-        const new_elements = awaitingAdd.map(graphElement => {
-          const element = cy.add([graphElement]);
-          cy.layout(layoutOpts).run();
-          return element;
-        });
-        remove.forEach((id) => cy.remove(cy.$id(id)));
-        console.debug("removed data");
-        new_elements.forEach((e) => api.collapse(e, expandCollapseMungeOpts));
-      } else {
-        console.debug("adding data");
-        const new_elements = cy.add(awaitingAdd);
-        console.debug("added data");
-        awaitingRemove.forEach((id) => cy.remove(cy.$id(id)));
-        console.debug("removed data");
-        cy.layout(layoutOpts).run();
-        console.debug("run layout");
-        api.collapse(new_elements, expandCollapseMungeOpts);
-      }
-      api.collapse(collapsed_children, expandCollapseMungeOpts);
-      api.collapse(collapsed_parents, expandCollapseMungeOpts);
-      console.debug("collapse");
-      cy.layout(layoutOpts).run();
-      console.debug("run layout again");
-      this.workInProgress = false;
-      this._runAwaitingWork();
-    }, 500);
-  }
-
   reLayout() {
     const { api, cy } = this;
     const collapsed_children = api.getAllCollapsedChildrenRecursively();
@@ -352,6 +308,63 @@ export class MembraneGraph {
     api.collapse(collapsed_children, expandCollapseMungeOpts);
     api.collapse(collapsed_parents, expandCollapseMungeOpts);
     cy.layout(layoutOpts).run();
+  }
+
+  update(add, remove) {
+    this.awaitingAdd.push(...add);
+    this.awaitingRemove.push(...remove);
+    this._apply_update();
+  }
+
+  _apply_update() {
+    if (!this._canWork()) {
+      return;
+    }
+    if (this.awaitingAdd.length == 0 && this.awaitingRemove.length == 0) {
+      return;
+    }
+    this.workInProgress = true;
+    setTimeout(() => {
+      console.debug("add graph data");
+      const { api, cy, awaitingAdd: add, awaitingRemove: remove } = this;
+      this.awaitingAdd = [];
+      this.awaitingRemove = [];
+      const needLayoutRun = [...add, ...remove].some(({ group, data: { parent, source, target } }) =>
+        (group == "nodes" && !parent) ||
+        (group == "nodes" && cy.$id(parent)[0] && api.isCollapsible(cy.$id(parent)[0])) ||
+        (group == "edges" && (cy.$id(source)[0] || cy.$id(target)[0]))
+      );
+      const collapsed_children = api.getAllCollapsedChildrenRecursively();
+      const collapsed_parents = cy.elements(".cy-expand-collapse-collapsed-node");
+      api.expandAll(expandCollapseMungeOpts);
+      console.debug("expanded data");
+      if (needLayoutRun && cy.nodes().length + add.length < 20) {
+        const new_elements = add.map(graphElement => {
+          const element = cy.add([graphElement]);
+          cy.layout(layoutOpts).run();
+          return element;
+        });
+        remove.forEach(({ data: { id } }) => cy.remove(cy.$id(id)));
+        console.debug("removed data");
+        new_elements.forEach((e) => api.collapse(e, expandCollapseMungeOpts));
+      } else {
+        console.debug("adding data");
+        const new_elements = cy.add(add);
+        console.debug("added data");
+        remove.forEach(({ data: { id } }) => cy.remove(cy.$id(id)));
+        console.debug("removed data");
+        needLayoutRun && cy.layout(layoutOpts).run();
+        console.debug("run layout");
+        api.collapse(new_elements, expandCollapseMungeOpts);
+      }
+      api.collapse(collapsed_children, expandCollapseMungeOpts);
+      api.collapse(collapsed_parents, expandCollapseMungeOpts);
+      console.debug("collapse");
+      needLayoutRun && cy.layout(layoutOpts).run();
+      console.debug("run layout again");
+      this.workInProgress = false;
+      this._runAwaitingWork();
+    }, 500);
   }
 
   _animate(animation, options) {
@@ -386,11 +399,7 @@ export class MembraneGraph {
       this._animate(animation, options);
       return;
     }
-    const { awaitingAdd, awaitingRemove } = this;
-    if (awaitingAdd.length > 0 || awaitingRemove.length > 0) {
-      this.update([], []);
-      return;
-    }
+    this._apply_update();
   }
 
 }
